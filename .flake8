@@ -1,0 +1,19 @@
+[flake8]
+exclude =
+    .git,
+    .gitignore,
+    __pycache__,
+    venv,
+    .env,
+    .env.example,
+    requirements.txt,
+    README.md,
+    __pycache__,
+    .pytest_cache,
+    .vscode,
+    .idea,
+    docker-compose.yml,
+    Dockerfile,
+    pytest.ini
+
+docstring-convention = google
