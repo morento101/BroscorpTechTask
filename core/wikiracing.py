@@ -5,7 +5,7 @@ import time
 
 import requests
 from bs4 import BeautifulSoup, element
-from database import connect_to_db
+from database import connect_to_db, cached_article
 from exceptions import AlreadyVisitedException, ResourceAccessException
 
 REQUESTS_PER_MINUTE = 100
@@ -18,7 +18,10 @@ class WikiRacer:
 
     def __init__(self, depth=0):
         self.depth = depth
-        self.graph = None
+
+        # remove graph
+        # self.graph = None
+
         self.path = None
         self.visited_pages = None
         self.exceptions = None
@@ -34,7 +37,8 @@ class WikiRacer:
         if start == finish:
             return [start]
 
-        self.graph = {}
+        # remove graph 
+        # self.graph = {}
         self.path = []
         self.search_queue = queue.Queue()
         self.visited_pages = set()
@@ -45,14 +49,21 @@ class WikiRacer:
         while not self.search_queue.empty():
             try:
                 current_page = self.search_queue.get()
-                page_url = self.base_wikipedia_url + "/wiki/" + current_page
+                cached_page = cached_article(self.session, current_page)
 
-                try:
-                    page_links = self.get_page_links(page_url)
-                except AlreadyVisitedException:
-                    continue
+                if cached_page:
+                    pass
 
-                self.graph[current_page] = page_links
+                else:
+                    page_url = self.base_wikipedia_url + "/wiki/" + current_page
+
+                    try:
+                        page_links = self.get_page_links(page_url)
+                    except AlreadyVisitedException:
+                        continue
+
+                # save_links(self.session, page_links)
+                # self.graph[current_page] = page_links
 
                 if self.has_finish_link(current_page, finish):
                     racer = WikiRacer(depth=self.depth+1)
@@ -73,9 +84,6 @@ class WikiRacer:
 
             except Exception as e:
                 self.exceptions.put(e)
-
-    # def article_cached(self, article_title: str) -> bool:
-    #     return self.session.qu
 
     def get_page_links(self, page_url: str) -> set[element.Tag]:
         soup = self.get_soup(page_url)
@@ -122,7 +130,9 @@ class WikiRacer:
             return True
 
     def has_finish_link(self, page_name: str, finish: str) -> bool:
-        return finish in self.graph[page_name]
+        # check if such title in db
+        # return finish in self.graph[page_name]
+        pass
 
     def show_exceptions(self) -> None:
         while not self.exceptions.empty():

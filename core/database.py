@@ -1,5 +1,5 @@
 from sqlalchemy import (Column, ForeignKey, Integer, String, Table,
-                        create_engine)
+                        create_engine, UniqueConstraint)
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
 Base = declarative_base()
@@ -18,7 +18,7 @@ article_to_article = Table(
 class Article(Base):
     __tablename__ = 'article'
     id = Column(Integer, primary_key=True)
-    label = Column(String)
+    title = Column(String)
     right_articles = relationship(
         "article",
         secondary=article_to_article,
@@ -26,6 +26,7 @@ class Article(Base):
         secondaryjoin=id==article_to_article.c.right_article_id,
         backref="left_articles"
     )
+    UniqueConstraint("id", "title")
 
 
 def connect_to_db(user, password, host, port, db_name):
@@ -36,3 +37,14 @@ def connect_to_db(user, password, host, port, db_name):
     Base.metadata.create_all(engine)
 
     return session, engine
+
+
+def cached_article(session, article_title: str) -> (bool | None):
+    article = session.query(Article).filter(
+        Article.title == article_title
+    )
+    return article.first()
+
+
+def save_links(session, links):
+    pass
