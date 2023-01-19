@@ -5,10 +5,8 @@ import time
 
 import requests
 from bs4 import BeautifulSoup, element
-
-from wikiracing.database import connect_to_db
-from wikiracing.exceptions import (AlreadyVisitedException,
-                                   ResourceAccessException)
+from database import connect_to_db
+from exceptions import AlreadyVisitedException, ResourceAccessException
 
 REQUESTS_PER_MINUTE = 100
 LINKS_PER_PAGE = 200
@@ -71,20 +69,13 @@ class WikiRacer:
                 
                 else:
                     for link in page_links:
-                        page_title = link.get("title", "")
-                        self.graph[page_title] = page_links
-                        self.search_queue.put(page_title)
+                        self.search_queue.put(link)
 
             except Exception as e:
                 self.exceptions.put(e)
 
-    def show_exceptions(self) -> None:
-        while not self.exceptions.empty():
-            logging.error(self.exceptions.get())
-
-    def has_finish_link(self, page_name: str, finish: str) -> bool:
-        titles = [link.get("title", "") for link in self.graph[page_name]]
-        return finish in titles
+    # def article_cached(self, article_title: str) -> bool:
+    #     return self.session.qu
 
     def get_page_links(self, page_url: str) -> set[element.Tag]:
         soup = self.get_soup(page_url)
@@ -93,8 +84,11 @@ class WikiRacer:
         page_links = body_content.find_all("a", class_=lambda cls: cls is None)
         validated_page_links = filter(self.validate_link, page_links)
         unique_page_links = list(dict.fromkeys(validated_page_links))
+        titles = list(
+            map(lambda link: link.get("title", ""), unique_page_links)
+        )
 
-        return unique_page_links[:LINKS_PER_PAGE]
+        return titles[:LINKS_PER_PAGE]
 
     def get_soup(self, page_url: str) -> BeautifulSoup:
         if page_url in self.visited_pages:
@@ -126,3 +120,10 @@ class WikiRacer:
 
         if re.match(valid_links_regex, href) and ":" not in href:
             return True
+
+    def has_finish_link(self, page_name: str, finish: str) -> bool:
+        return finish in self.graph[page_name]
+
+    def show_exceptions(self) -> None:
+        while not self.exceptions.empty():
+            logging.error(self.exceptions.get())
