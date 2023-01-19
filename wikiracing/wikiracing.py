@@ -6,8 +6,9 @@ import time
 import requests
 from bs4 import BeautifulSoup, element
 
-from exceptions import AlreadyVisitedException, ResourceAccessException
-from database import connect_to_db
+from wikiracing.database import connect_to_db
+from wikiracing.exceptions import (AlreadyVisitedException,
+                                   ResourceAccessException)
 
 REQUESTS_PER_MINUTE = 100
 LINKS_PER_PAGE = 200

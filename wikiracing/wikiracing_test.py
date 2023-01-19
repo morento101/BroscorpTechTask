@@ -1,6 +1,6 @@
 import unittest
 
-from wikiracing import WikiRacer
+from wikiracing.wikiracing import WikiRacer
 
 
 class WikiRacerTest(unittest.TestCase):
