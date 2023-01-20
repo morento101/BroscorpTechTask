@@ -15,9 +15,22 @@ SEARCH_DEPTH = 3
 
 
 class WikiRacer:
+    """Finds the path from start to finish article in Wikipedia.
+
+    Raises:
+        AlreadyVisitedException: page is viseted
+        ResourceAccessException: cannot access the server
+    """
+
     base_wikipedia_url = "https://uk.wikipedia.org"
 
-    def __init__(self, depth=0):
+    def __init__(self, depth: int = 0):
+        """Initialize an object.
+
+        Args:
+            depth (int, optional): shows current depth of recursion.
+            Defaults to 0.
+        """
         self.depth = depth
         self.path = None
         self.visited_pages = None
@@ -27,6 +40,17 @@ class WikiRacer:
         )
 
     def find_path(self, start: str, finish: str) -> list[str]:
+        """Finds the path from start page to finish page.
+
+        Uses the links from pages to come to desired point.
+
+        Args:
+            start (str): title of the first page in Wikipedia
+            finish (str): title of the last page in Wikipedia
+
+        Returns:
+            list[str]: path from start to finish
+        """
         if self.depth > SEARCH_DEPTH:
             return
 
@@ -42,8 +66,6 @@ class WikiRacer:
         while not self.search_queue.empty():
             try:
                 current_page = self.search_queue.get()
-                logging.info(f"Current page: {current_page}")
-
                 cached_page = cached_page_db(self.session, current_page)
 
                 if not cached_page:
@@ -82,7 +104,15 @@ class WikiRacer:
             except Exception as e:
                 logging.exception(e)
 
-    def get_page_links(self, page_url: str) -> set[element.Tag]:
+    def get_page_links(self, page_url: str) -> list[element.Tag]:
+        """Return the list links in webpage.
+
+        Args:
+            page_url (str): url of the desired webpage
+
+        Returns:
+            list[element.Tag]: list of <a> tags in webpage
+        """
         soup = self.get_soup(page_url)
 
         body_content = soup.select("div.mw-content-ltr")[0]
@@ -96,6 +126,17 @@ class WikiRacer:
         return titles[:LINKS_PER_PAGE]
 
     def get_soup(self, page_url: str) -> BeautifulSoup:
+        """Parses the HTML of desired webpage.
+
+        Args:
+            page_url (str): url of webpage to parse
+
+        Raises:
+            AlreadyVisitedException: page is alredy viseted
+
+        Returns:
+            BeautifulSoup: parsed HTML
+        """
         if page_url in self.visited_pages:
             raise AlreadyVisitedException(
                 f"page {page_url} is already visited!"
@@ -105,6 +146,19 @@ class WikiRacer:
         return BeautifulSoup(response.text, "html.parser")
 
     def visit_page(self, page_url: str, depth: int = 0) -> requests.Response:
+        """Visits the page and waits some time.
+
+        Args:
+            page_url (str): page to visit
+            depth (int, optional): times retried to send a request.
+            Defaults to 0.
+
+        Raises:
+            ResourceAccessException: can't get response from the server
+
+        Returns:
+            requests.Response: _description_
+        """
         if depth > 3:
             raise ResourceAccessException(f"Cannot acceess page {page_url}")
 
@@ -120,6 +174,16 @@ class WikiRacer:
 
     @staticmethod
     def validate_link(link: element.Tag) -> bool:
+        """Validates the link.
+
+        Ignores external links and technical links about article.
+
+        Args:
+            link (element.Tag): parsef <a> tag
+
+        Returns:
+            bool: shows if link is valid
+        """
         valid_links_regex = '(https://en.wikipedia.org)?/wiki/.*'
         href = link.get("href", "")
 
