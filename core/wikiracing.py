@@ -5,7 +5,8 @@ import time
 
 import requests
 from bs4 import BeautifulSoup, element
-from database import connect_to_db, cached_article
+from database import (cached_page_db, connect_to_db, get_page_links,
+                      has_finish_link, save_page_with_links)
 from exceptions import AlreadyVisitedException, ResourceAccessException
 
 REQUESTS_PER_MINUTE = 100
@@ -18,13 +19,8 @@ class WikiRacer:
 
     def __init__(self, depth=0):
         self.depth = depth
-
-        # remove graph
-        # self.graph = None
-
         self.path = None
         self.visited_pages = None
-        self.exceptions = None
 
         self.session, self.engine = connect_to_db(
             "postgres", "postgres", "localhost", 5432, "wiki"
@@ -37,35 +33,37 @@ class WikiRacer:
         if start == finish:
             return [start]
 
-        # remove graph 
-        # self.graph = {}
         self.path = []
         self.search_queue = queue.Queue()
         self.visited_pages = set()
-        self.exceptions = queue.Queue()
 
         self.search_queue.put(start)
 
         while not self.search_queue.empty():
             try:
                 current_page = self.search_queue.get()
-                cached_page = cached_article(self.session, current_page)
+                logging.info(f"Current page: {current_page}")
 
-                if cached_page:
-                    pass
+                cached_page = cached_page_db(self.session, current_page)
 
-                else:
-                    page_url = self.base_wikipedia_url + "/wiki/" + current_page
+                if not cached_page:
+                    page_url = (
+                        self.base_wikipedia_url + "/wiki/" + current_page
+                    )
 
                     try:
                         page_links = self.get_page_links(page_url)
                     except AlreadyVisitedException:
                         continue
 
-                # save_links(self.session, page_links)
-                # self.graph[current_page] = page_links
+                    cached_page = save_page_with_links(
+                        self.session, current_page, page_links
+                    )
 
-                if self.has_finish_link(current_page, finish):
+                else:
+                    page_links = get_page_links(cached_page)
+
+                if has_finish_link(self.session, cached_page, finish):
                     racer = WikiRacer(depth=self.depth+1)
                     result = racer.find_path(start, finish=current_page)
 
@@ -75,15 +73,14 @@ class WikiRacer:
 
                     self.path.extend(result)
                     self.path.append(finish)
-                    self.show_exceptions()
                     return self.path
-                
+
                 else:
                     for link in page_links:
                         self.search_queue.put(link)
 
             except Exception as e:
-                self.exceptions.put(e)
+                logging.exception(e)
 
     def get_page_links(self, page_url: str) -> set[element.Tag]:
         soup = self.get_soup(page_url)
@@ -101,7 +98,7 @@ class WikiRacer:
     def get_soup(self, page_url: str) -> BeautifulSoup:
         if page_url in self.visited_pages:
             raise AlreadyVisitedException(
-                f"Page {page_url} is already visited!"
+                f"page {page_url} is already visited!"
             )
 
         response = self.visit_page(page_url)
@@ -128,12 +125,3 @@ class WikiRacer:
 
         if re.match(valid_links_regex, href) and ":" not in href:
             return True
-
-    def has_finish_link(self, page_name: str, finish: str) -> bool:
-        # check if such title in db
-        # return finish in self.graph[page_name]
-        pass
-
-    def show_exceptions(self) -> None:
-        while not self.exceptions.empty():
-            logging.error(self.exceptions.get())
