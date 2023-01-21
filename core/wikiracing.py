@@ -51,8 +51,12 @@ class WikiRacer:
         Returns:
             list[str]: path from start to finish
         """
+        # check if start and finish are valid article title
+        self.visit_page(self.base_wikipedia_url + "/wiki/" + finish)
+        self.visit_page(self.base_wikipedia_url + "/wiki/" + finish)
+
         if self.depth > SEARCH_DEPTH:
-            return
+            return []
 
         if start == finish:
             return [start]
@@ -63,12 +67,13 @@ class WikiRacer:
 
         self.search_queue.put(start)
 
-        while not self.search_queue.empty():
+        while not self.search_queue.empty() and self.depth < SEARCH_DEPTH:
             try:
                 current_page = self.search_queue.get()
+                print(current_page)
                 cached_page = cached_page_db(self.session, current_page)
 
-                if not cached_page:
+                if cached_page is None:
                     page_url = (
                         self.base_wikipedia_url + "/wiki/" + current_page
                     )
@@ -89,7 +94,7 @@ class WikiRacer:
                     racer = WikiRacer(depth=self.depth+1)
                     result = racer.find_path(start, finish=current_page)
 
-                    if result is None or result == []:
+                    if result == []:
                         self.path.clear()
                         return self.path
 
@@ -103,6 +108,8 @@ class WikiRacer:
 
             except Exception as e:
                 logging.exception(e)
+
+        return []
 
     def get_page_links(self, page_url: str) -> list[element.Tag]:
         """Return the list links in webpage.
@@ -131,9 +138,6 @@ class WikiRacer:
         Args:
             page_url (str): url of webpage to parse
 
-        Raises:
-            AlreadyVisitedException: page is alredy viseted
-
         Returns:
             BeautifulSoup: parsed HTML
         """
@@ -154,6 +158,7 @@ class WikiRacer:
             Defaults to 0.
 
         Raises:
+            AlreadyVisitedException: when page was already visited
             ResourceAccessException: can't get response from the server
 
         Returns:
@@ -164,9 +169,14 @@ class WikiRacer:
 
         try:
             response = requests.get(page_url)
+            if response.status_code != 200:
+                raise requests.exceptions.RequestException
+
             self.visited_pages.add(page_url)
+
         except requests.exceptions.RequestException:
             self.visit_page(page_url, depth=depth+1)
+
         finally:
             time.sleep(60 / REQUESTS_PER_MINUTE)
 

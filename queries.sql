@@ -15,14 +15,19 @@ LIMIT 5;
 
 
 -- Для заданної статті знайти середню кількість потомків другого рівня
+WITH variables (article) AS (
+  values ('Дружба')
+)
+
 SELECT ROUND(AVG(count_child_depth_2), 0) AS avg_child_depth_2
 FROM (
     SELECT COUNT(right_page_id) AS count_child_depth_2
     FROM page_to_page
     WHERE left_page_id IN (
         SELECT right_page_id
-        FROM page JOIN page_to_page ON id = left_page_id
-        WHERE title = 'Дружба'
+        FROM variables, page
+        JOIN page_to_page ON id = left_page_id
+        WHERE title = article
     )
     GROUP BY left_page_id
 ) count_table;
