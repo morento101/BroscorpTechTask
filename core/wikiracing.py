@@ -71,11 +71,15 @@ class WikiRacer:
         if start == finish:
             return [start]
 
-        self.search_queue.put(start)
+        self.search_queue.put((self.depth, start))
 
         while not self.search_queue.empty() and self.depth < SEARCH_DEPTH:
             try:
-                current_page = self.search_queue.get()
+                priority, current_page = self.search_queue.get()
+
+                if priority > SEARCH_DEPTH:
+                    return []
+
                 # print(current_page)
                 cached_page = cached_page_db(self.session, current_page)
 
@@ -110,7 +114,7 @@ class WikiRacer:
 
                 else:
                     for link in page_links:
-                        self.search_queue.put(link)
+                        self.search_queue.put((priority+1, link))
 
             except Exception as e:
                 logging.exception(e)

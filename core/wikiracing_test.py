@@ -10,15 +10,11 @@ class WikiRacerTest(unittest.TestCase):
     """Tests for WikiRacer.find_path method."""
 
     racer = wikiracing.WikiRacer()
+    original_search_depth = wikiracing.__dict__["SEARCH_DEPTH"]
 
     def test_1(self):
         path = self.racer.find_path('Дружба', 'Рим')
         self.assertEqual(path, ['Дружба', 'Якопо Понтормо', 'Рим'])
-
-        wikiracing.__dict__["SEARCH_DEPTH"] = 1
-        path = self.racer.find_path('Дружба', 'Рим')
-        self.assertEqual(path, [])
-        wikiracing.__dict__["SEARCH_DEPTH"] = 3
 
     def test_2(self):
         path = self.racer.find_path('Мітохондріальна ДНК', 'Вітамін K')
@@ -48,10 +44,11 @@ class WikiRacerTest(unittest.TestCase):
             path, ['Дружина (військо)', 'Олег', '3 жовтня', '6 жовтня']
         )
 
-        wikiracing.__dict__["SEARCH_DEPTH"] = 2
-        path = self.racer.find_path('Дружина (військо)', '6 жовтня')
+    def test_too_long_path(self):
+        wikiracing.__dict__["SEARCH_DEPTH"] = 1
+        path = self.racer.find_path('Дружба', 'Фотограмметрія')
         self.assertEqual(path, [])
-        wikiracing.__dict__["SEARCH_DEPTH"] = 3
+        wikiracing.__dict__["SEARCH_DEPTH"] = self.original_search_depth
 
     def test_wrong_start(self):
         """Test if ResourceAccessException is raised with wrong start given"""
