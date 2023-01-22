@@ -45,6 +45,7 @@ class WikiRacerTest(unittest.TestCase):
         )
 
     def test_too_long_path(self):
+        """Limit search depth and try find article that is too far."""
         wikiracing.__dict__["SEARCH_DEPTH"] = 1
         path = self.racer.find_path('Дружба', 'Фотограмметрія')
         self.assertEqual(path, [])

@@ -80,7 +80,6 @@ class WikiRacer:
                 if priority > SEARCH_DEPTH:
                     return []
 
-                # print(current_page)
                 cached_page = cached_page_db(self.session, current_page)
 
                 if cached_page is None:
