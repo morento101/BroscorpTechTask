@@ -6,7 +6,7 @@ import time
 import requests
 from bs4 import BeautifulSoup, element
 from database import (cached_page_db, connect_to_db, get_page_links,
-                      has_finish_link, save_page_with_links)
+                      has_finish_link, page_in_db, save_page_with_links)
 from exceptions import AlreadyVisitedException, ResourceAccessException
 
 REQUESTS_PER_MINUTE = 100
@@ -32,8 +32,9 @@ class WikiRacer:
             Defaults to 0.
         """
         self.depth = depth
-        self.path = None
-        self.visited_pages = None
+        self.path = []
+        self.search_queue = queue.Queue()
+        self.visited_pages = set()
 
         self.session, self.engine = connect_to_db(
             "postgres", "postgres", "localhost", 5432, "wiki"
@@ -51,9 +52,18 @@ class WikiRacer:
         Returns:
             list[str]: path from start to finish
         """
+        self.path = []
+        self.search_queue = queue.Queue()
+        self.visited_pages = set()
+
         # check if start and finish are valid article title
-        self.visit_page(self.base_wikipedia_url + "/wiki/" + finish)
-        self.visit_page(self.base_wikipedia_url + "/wiki/" + finish)
+        if not page_in_db(self.session, start):
+            self.visit_page(self.base_wikipedia_url + "/wiki/" + start)
+
+        if not page_in_db(self.session, finish):
+            self.visit_page(self.base_wikipedia_url + "/wiki/" + finish)
+
+        self.visited_pages.clear()
 
         if self.depth > SEARCH_DEPTH:
             return []
@@ -61,16 +71,12 @@ class WikiRacer:
         if start == finish:
             return [start]
 
-        self.path = []
-        self.search_queue = queue.Queue()
-        self.visited_pages = set()
-
         self.search_queue.put(start)
 
         while not self.search_queue.empty() and self.depth < SEARCH_DEPTH:
             try:
                 current_page = self.search_queue.get()
-                print(current_page)
+                # print(current_page)
                 cached_page = cached_page_db(self.session, current_page)
 
                 if cached_page is None:
@@ -166,6 +172,11 @@ class WikiRacer:
         """
         if depth > 3:
             raise ResourceAccessException(f"Cannot acceess page {page_url}")
+
+        if page_url in self.visited_pages:
+            raise AlreadyVisitedException(
+                f"page {page_url} is already visited!"
+            )
 
         try:
             response = requests.get(page_url)

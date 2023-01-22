@@ -1,8 +1,8 @@
 import unittest
 
+import database
 import exceptions
 import wikiracing
-import database
 from sqlalchemy import or_
 
 
@@ -49,7 +49,7 @@ class WikiRacerTest(unittest.TestCase):
         )
 
         wikiracing.__dict__["SEARCH_DEPTH"] = 2
-        path = self.racer.find_path('Мітохондріальна ДНК', 'Вітамін K')
+        path = self.racer.find_path('Дружина (військо)', '6 жовтня')
         self.assertEqual(path, [])
         wikiracing.__dict__["SEARCH_DEPTH"] = 3
 
@@ -84,11 +84,11 @@ class WikiRacerFunctionsTest(unittest.TestCase):
 
     def test_visit_page(self):
         """Valdates that racer can't visit same link more than ones."""
-        page_url = self.racer.base_wikipedia_url + "/wiki/Україна/"
+        page_url = self.racer.base_wikipedia_url + "/wiki/Україна"
         self.racer.visit_page(page_url)
 
         with self.assertRaises(exceptions.AlreadyVisitedException):
-            self.racer.visit_page(page_url)
+            print(self.racer.visit_page(page_url))
 
 
 class DatabaseTest(unittest.TestCase):
